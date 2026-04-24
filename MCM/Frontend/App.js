@@ -1,0 +1,470 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Timetable from './components/Timetable';
+import ExtraPage from './components/ExtraPage'; 
+
+const PRESET_COLORS = ['#FF0000CC', '#FFFF00CC', '#29b829cc', '#0f0fb8cc', '#8c3434cc', '#d801d8cc'];
+
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('main'); 
+  const [schedules, setSchedules] = useState([]);
+  const [colorIndex, setColorIndex] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [inputText, setInputText] = useState('');
+  const [simulationResults, setSimulationResults] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@mangsang_schedules');
+        if (saved) setSchedules(JSON.parse(saved));
+      } catch (e) { console.log(e); }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem('@mangsang_schedules', JSON.stringify(schedules));
+  }, [schedules]);
+
+  const handleDragComplete = useCallback((min, max) => {
+    const isOverlap = schedules.some(s => min <= s.endIdx && max >= s.startIdx);
+    if (isOverlap) { Alert.alert("알림", "이미 플랜이 작성되었습니다."); return; }
+
+    const formatTime = (idx) => {
+      const totalMin = 6 * 60 + idx * 10;
+      return `${Math.floor(totalMin / 60) % 24}시 ${(totalMin % 60).toString().padStart(2, '0')}분`;
+    };
+
+    setSelectedItem({
+      startIdx: min,
+      endIdx: max,
+      timeStr: `${formatTime(min)} ~ ${formatTime(max + 1)}`,
+      color: PRESET_COLORS[colorIndex]
+    });
+
+    setInputText('');
+    setIsEditMode(false);
+    setModalVisible(true);
+  }, [schedules, colorIndex]);
+
+  const saveAction = () => {
+    if (!inputText.trim()) return;
+
+    if (isEditMode) {
+      setSchedules(prev =>
+        prev.map(s =>
+          s.id === selectedItem.id
+            ? { ...s, action: inputText, color: selectedItem.color }
+            : s
+        )
+      );
+    } else {
+      setSchedules(prev => [
+        ...prev,
+        { ...selectedItem, id: Date.now().toString(), action: inputText }
+      ]);
+      setColorIndex(prev => (prev + 1) % PRESET_COLORS.length);
+    }
+
+    setModalVisible(false);
+  };
+
+  const deleteItem = () => {
+    setSchedules(prev => prev.filter(s => s.id !== selectedItem.id));
+    setModalVisible(false);
+  };
+
+  const goToExtraPage = async () => {
+    if (schedules.length === 0) {
+      return Alert.alert("알림", "일정을 먼저 입력해주세요! 🎬");
+    }
+
+    setIsLoading(true);
+
+    try {
+      const promises = schedules.map(async (s) => {
+        try {
+          const res = await fetch("http://localhost:8080/api/story", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              time: s.timeStr,
+              myAction: s.action,
+            }),
+          });
+
+          const json = await res.json();
+
+          if (res.ok) {
+            return {
+              timeStr: s.timeStr,
+              data: {
+                name: json.data.name,
+                extraAction: json.data.action,
+                benefit: json.data.benefit,
+                fullStory: json.data.fullStory
+              }
+            };
+          } else {
+            throw new Error("서버 응답 에러");
+          }
+        } catch (err) {
+          console.log(`${s.timeStr} 분석 실패:`, err);
+
+          return {
+            timeStr: s.timeStr,
+            data: {
+              name: "무명의 엑스트라",
+              extraAction: "주연의 등장을 돋보이게 하기 위해 자연스럽게 배경에 녹아듭니다.",
+              benefit: "평범한 일정이 갑자기 한 편의 장면처럼 느껴집니다.",
+              fullStory: ""
+            }
+          };
+        }
+      });
+
+      const resultsArray = await Promise.all(promises);
+
+      const finalResults = {};
+      resultsArray.forEach(item => {
+        finalResults[item.timeStr] = item.data;
+      });
+
+      setSimulationResults(finalResults);
+      setCurrentPage('extra');
+
+    } catch (e) {
+      Alert.alert("에러", "스토리 생성 중 문제가 발생했습니다. 서버를 확인해주세요!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (currentPage === 'extra') {
+    return (
+      <ExtraPage
+        schedules={schedules}
+        results={simulationResults}
+        onBack={() => setCurrentPage('main')}
+      />
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>망상 플래너</Text>
+        <Text style={styles.headerSubTitle}>Main Character Maker</Text>
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.leftSection}>
+          <Text style={styles.sectionTitle}>오늘의 플랜</Text>
+
+          <ScrollView style={styles.planList}>
+            {[...schedules].sort((a, b) => a.startIdx - b.startIdx).map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={styles.planButton}
+                onPress={() => {
+                  setSelectedItem(s);
+                  setInputText(s.action);
+                  setIsEditMode(true);
+                  setModalVisible(true);
+                }}
+              >
+                <View style={[styles.colorIndicator, { backgroundColor: s.color }]} />
+                <Text style={styles.planText}>{s.timeStr} : {s.action}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* 왼쪽 플랜 밑으로 이동한 버튼 */}
+          <TouchableOpacity style={styles.extraButton} onPress={goToExtraPage} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.extraButtonText}>엑스트라 플랜 생성</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.rightSection}>
+          {/* 타임테이블 위 날짜 공백 */}
+          <View style={styles.dateBox}>
+            <Text style={styles.dateText}>2026-04-25</Text>
+          </View>
+
+          <Timetable
+            schedules={schedules}
+            onDragComplete={handleDragComplete}
+            previewColor={PRESET_COLORS[colorIndex]}
+          />
+        </View>
+      </View>
+
+      <Modal visible={modalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTime}>{selectedItem?.timeStr}</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="행동 입력"
+              placeholderTextColor="#999"
+              autoFocus
+            />
+
+            <View style={styles.bottomContainer}>
+              <View style={styles.colorPicker}>
+                {isEditMode && PRESET_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[
+                      styles.colorCircle,
+                      {
+                        backgroundColor: c,
+                        borderWidth: selectedItem.color === c ? 2 : 0,
+                        borderColor: '#333'
+                      }
+                    ]}
+                    onPress={() => setSelectedItem({ ...selectedItem, color: c })}
+                  />
+                ))}
+              </View>
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelBtn}>
+                  <Text style={styles.btnText}>취소</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={saveAction} style={styles.saveBtn}>
+                  <Text style={[styles.btnText, { color: '#fff', fontWeight: 'bold' }]}>
+                    {isEditMode ? "수정" : "저장"}
+                  </Text>
+                </TouchableOpacity>
+
+                {isEditMode && (
+                  <TouchableOpacity onPress={deleteItem} style={styles.deleteBtn}>
+                    <Text style={[styles.btnText, { color: '#fff' }]}>삭제</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+
+  header: {
+    paddingVertical: 16,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderColor: '#000000',
+    backgroundColor: '#000000',
+    alignItems: 'center',
+  },
+
+  headerTitle: {
+    fontSize: 23,
+    fontWeight: '900',
+    textAlign: 'center',
+    color: '#FFD700',
+  },
+
+  headerSubTitle: {
+    marginTop: 3,
+    fontSize: 11,
+    color: '#aaa',
+    fontWeight: '600',
+  },
+
+  content: {
+    flex: 1,
+    flexDirection: 'row',
+    padding: 12,
+    gap: 12,
+  },
+
+  leftSection: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: '#1A1A1F',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#2E2E36',
+  },
+
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 14,
+    color: '#FFFFFF',
+  },
+
+  planList: {
+    flex: 1,
+  },
+
+  planButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    padding: 13,
+    backgroundColor: '#25252D',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#34343D',
+  },
+
+  colorIndicator: {
+    width: 10,
+    height: 36,
+    borderRadius: 6,
+    marginRight: 10,
+  },
+
+  planText: {
+    fontSize: 12,
+    flex: 1,
+    color: '#fff',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+
+  rightSection: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#2E2E36',
+  },
+
+  dateBox: {
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    borderBottomWidth: 1,
+    borderColor: '#000000',
+  },
+
+  dateText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+
+  extraButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 16,
+    marginTop: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 5,
+  },
+
+  extraButtonText: {
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalContent: {
+    width: '88%',
+    backgroundColor: '#fff',
+    padding: 25,
+    borderRadius: 25,
+    elevation: 10,
+  },
+
+  modalTime: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+
+  modalInput: {
+    borderBottomWidth: 2,
+    borderColor: '#eee',
+    marginBottom: 20,
+    padding: 10,
+    fontSize: 16,
+  },
+
+  bottomContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  colorPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  colorCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginRight: 5,
+  },
+
+  modalBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  btnText: {
+    fontSize: 13,
+  },
+
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#eee',
+    borderRadius: 8,
+  },
+
+  deleteBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#FF5252',
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+});
