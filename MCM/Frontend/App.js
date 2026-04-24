@@ -277,8 +277,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderColor: '#000000',
-    backgroundColor: '#000000',
+    borderColor: '#ffffff',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
   },
 
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: '900',
     textAlign: 'center',
-    color: '#FFD700',
+    color: '#000000',
   },
 
   headerSubTitle: {
@@ -301,22 +301,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     gap: 12,
+    margin : 10,
   },
 
   leftSection: {
     flex: 1,
-    padding: 14,
-    backgroundColor: '#1A1A1F',
+    padding: 30,
+    backgroundColor: '#ffffff',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#2E2E36',
+    borderColor: '#ffffff',
   },
 
   sectionTitle: {
     fontSize: 20,
     fontWeight: '900',
     marginBottom: 14,
-    color: '#FFFFFF',
+    color: '#000000',
   },
 
   planList: {
@@ -328,10 +329,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     padding: 13,
-    backgroundColor: '#25252D',
+    backgroundColor: '#cdeaf9',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#34343D',
+    borderColor: '#cae8f7',
   },
 
   colorIndicator: {
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
   planText: {
     fontSize: 12,
     flex: 1,
-    color: '#fff',
+    color: '#000000',
     lineHeight: 18,
     fontWeight: '600',
   },
@@ -355,27 +356,27 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#2E2E36',
+    borderColor: '#ffffff',
   },
 
   dateBox: {
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderColor: '#000000',
   },
 
   dateText: {
-    color: '#FFD700',
+    color: '#000000',
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
 
   extraButton: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#9abaff',
     paddingVertical: 16,
     marginTop: 14,
     borderRadius: 16,
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   },
 
   extraButtonText: {
-    color: '#000',
+    color: '#fefefe',
     fontSize: 15,
     fontWeight: '900',
   },

@@ -22,7 +22,7 @@ export default function ExtraPage({ schedules, results, onBack }) {
         <View style={styles.leftSection}>
           <Text style={styles.sectionTitle}> 엑스트라 플랜 </Text>
           <ScrollView>
-            /// ExtraPage.js 내부 렌더링 부분 예시
+            { /*ExtraPage.js 내부 렌더링 부분 예시*/}
             {[...schedules].sort((a, b) => a.startIdx - b.startIdx).map((s) => {
               const res = results[s.timeStr]; // App.js에서 넘겨준 결과
               return (

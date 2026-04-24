@@ -28,7 +28,7 @@ export default function Timetable({ schedules, onDragComplete, previewColor }) {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => false,
       onPanResponderGrant: (evt) => {
         setIsScrollEnabled(false); 
         const { locationX, locationY } = evt.nativeEvent;
