@@ -17,13 +17,20 @@ const app = express();
 
 // 3. 미들웨어 설정
 app.use(cors());
+/*
+// 지금은 그대로 두셔도 되지만, 프론트엔드 배포 후에는 아래처럼 수정하세요!
+app.use(cors({
+  origin: 'https://내-프론트엔드-도메인.vercel.app', // 이 주소만 허용
+  credentials: true
+}));
+*/
 app.use(express.json());
 
 // 4. Gemini 설정
 // dotenv.config()가 실행된 후라 process.env.GEMINI_API_KEY를 읽을 수 있습니다.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-lite", 
+  model: "gemini-2.5-flash-lite",
   generationConfig: { responseMimeType: "application/json" }
 });
 
@@ -35,8 +42,8 @@ app.post('/api/story', async (req, res) => {
   const { time, myAction } = req.body;
 
   // 행동 예외 처리 (계획이 시원하게 망한 상황으로 설정)
-  const userActionDescription = myAction 
-    ? `내가 "${myAction}"(을)를 야심 차게 계획했는데, 얼탱이없게 꼬여버린 상황.` 
+  const userActionDescription = myAction
+    ? `내가 "${myAction}"(을)를 야심 차게 계획했는데, 얼탱이없게 꼬여버린 상황.`
     : `이 시간대에 내가 할 법한 흔한 계획을 네가 상상하고, 그게 아주 어이없게 실패한 상황.`;
 
   // AI에게 내릴 프롬프트
@@ -90,7 +97,7 @@ app.post('/api/story', async (req, res) => {
       console.error("❌ JSON 파싱 실패:", text);
       throw e;
     }
-    
+
     // 최종 응답: 시간대 하나당 하나의 storyData(fullStory + 여러 명의 extras)
     res.status(200).json({
       message: "AI 스토리 생성 완료!",
@@ -107,7 +114,13 @@ app.post('/api/story', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`🚀 서버가 http://localhost:${PORT} 에서 대기 중입니다!`);
-});
+// 로컬 환경에서 테스트할 때만 서버를 띄우고, Vercel에서는 export만 하도록 설정
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`🚀 서버가 http://localhost:${PORT} 에서 대기 중입니다!`);
+  });
+}
+
+// Vercel이 서버리스 함수로 사용할 수 있도록 app을 내보냄 (매우 중요!)
+export default app;
