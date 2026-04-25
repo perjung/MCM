@@ -146,7 +146,7 @@ export default function Timetable({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#b6b5b5' },
   hourRow: {
     flexDirection: 'row',
     height: ROW_HEIGHT,
