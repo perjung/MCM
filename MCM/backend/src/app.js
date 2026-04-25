@@ -19,7 +19,7 @@ const app = express();
 //app.use(cors());
 // 지금은 그대로 두셔도 되지만, 프론트엔드 배포 후에는 아래처럼 수정하세요!
 app.use(cors({
-  origin: 'https://mcm-git-main-jjinddos-projects.vercel.app/', // 이 주소만 허용
+  origin: 'https://mcm-git-main-jjinddos-projects.vercel.app', // 이 주소만 허용
   credentials: true
 }));
 
