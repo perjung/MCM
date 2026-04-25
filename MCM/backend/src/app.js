@@ -78,7 +78,7 @@ app.post('/app/story', async (req, res) => {
           { role: "system", content: "You are a comedy writer. Respond ONLY in JSON format." },
           { role: "user", content: prompt }
         ],
-        model: "llama3-70b-8192", // 성능 좋은 70B 모델
+        model: "llama-3.3-70b-versatile", // 성능 좋은 70B 모델
         response_format: { type: "json_object" } // JSON 보장
       });
 
